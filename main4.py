@@ -458,10 +458,108 @@ for start_j in range(1, len(points_HIJ[0][0])):
     plt.plot(x, y, 'g-')
 
 # Add labels and grid
-plt.xlabel('x')
-plt.ylabel('y')
-plt.title('Characteristics')
-plt.legend()
-plt.grid(True)
+# plt.xlabel('x')
+# plt.ylabel('y')
+# plt.title('Characteristics')
+# plt.legend()
+# plt.grid(True)
+import matplotlib.cm as cm
+import matplotlib.colors as mcolors
 
+# Colormap for Mach
+cmap = cm.viridis
+M_min = 2.0
+M_max = max(np.max(ABC[:,2]), np.max(CDEF[:,2]), np.max(FGHI[:,2]), M_acd, M_efh)
+norm = mcolors.Normalize(vmin=M_min, vmax=M_max)
+
+def plot_family_right(points_region, M_region, lw=1.7):
+    """Color the right-running (row-wise) characteristics."""
+    for i in range(len(points_region)):
+        x = points_region[i][0]
+        y = points_region[i][1]
+        M = M_region[i]
+        for j in range(len(x)-1):
+            Mloc = 0.5*(M[j] + M[j+1])
+            plt.plot(x[j:j+2], y[j:j+2], color=cmap(norm(Mloc)), linewidth=lw)
+
+def plot_family_left(points_region, M_region, lw=1.7):
+    """Color the left-running (diagonal) characteristics."""
+    # start_j corresponds to the starting column index on the top row
+    for start_j in range(1, len(points_region[0][0])):
+        xs, ys, Ms = [], [], []
+        for i in range(len(points_region)):
+            j = start_j - i
+            if j < 0 or j >= len(points_region[i][0]):  # out of bounds for this row
+                break
+            xs.append(points_region[i][0][j])
+            ys.append(points_region[i][1][j])
+            Ms.append(M_region[i][j])
+        for k in range(len(xs)-1):
+            Mloc = 0.5*(Ms[k] + Ms[k+1])
+            plt.plot(xs[k:k+2], ys[k:k+2], color=cmap(norm(Mloc)), linewidth=lw)
+
+# ==========================================
+# Mach-colored characteristic lines
+# ==========================================
+
+# Define a colormap normalized to your Mach range
+# M_min, M_max = np.min([np.min(ABC[:,3]), np.min(CDEF[:,3]), np.min(FGHI[:,3]), p_a]), np.max([np.max(ABC[:,3]), np.max(CDEF[:,3]), np.max(FGHI[:,3]), p_a])
+# norm = mcolors.Normalize(vmin=M_min, vmax=M_max)
+# cmap = cm.viridis
+
+# # Helper function to plot Mach-colored lines
+# def plot_colored_lines(points_region, Mach_region, cmap, norm, linestyle='-'):
+#     for i in range(len(points_region)):
+#         x = points_region[i][0]
+#         y = points_region[i][1]
+#         M_arr = Mach_region[i]
+
+#         # draw segments between consecutive points, colored by Mach
+#         for j in range(len(x)-1):
+#             M_local = (M_arr[j] + M_arr[j+1]) / 2
+#             plt.plot(x[j:j+2], y[j:j+2], linestyle,
+#                      color=cmap(norm(M_local)), linewidth=1.5)
+
+# # ==========================================
+# # Now use that for all your regions
+# # # ==========================================
+# # plt.plot([x0, x1], [0,0], 'k--', label='Centerline')
+# # plt.plot([x_A, x_D], [y_A, y_D], 'r--', label='jet boundary')
+
+# # ABC (left-running fan from the lip) – each is a straight line
+# for i in range(len(ABC)):
+#     x_i = [0, x_BC[i]]
+#     y_i = [1, y_BC[i]]
+#     plt.plot(x_i, y_i, color=cmap(norm(ABC[i,3])), linewidth=1.7)
+
+# # CDEF (right-running straight lines) – color by its Mach
+# for i in range(len(CDEF)):
+#     x_C = points_BCE[i][0][-1];  y_C = points_BCE[i][1][-1]
+#     x_F = x_DF[i];               y_F = y_DF[i]
+#     plt.plot([x_C, x_F], [y_C, y_F], color=cmap(norm(CDEF[i,3])), linewidth=1.7)
+
+# # FGHI (left-running straight lines) – color by its Mach
+# for i in range(len(FGHI)):
+#     x_F = points_DFG[i][0][-1];  y_F = points_DFG[i][1][-1]
+#     x_Hp = x_HI[i];              y_Hp = y_HI[i]
+#     plt.plot([x_F, x_Hp], [y_F, y_Hp], color=cmap(norm(FGHI[i,3])), linewidth=1.7)
+
+# # BCE, DFG, HIJ: color BOTH families (right-running rows + left-running diagonals)
+# plot_family_right(points_BCE, BCE[:,3])
+# plot_family_left(points_BCE,  BCE[:,3])
+
+# plot_family_right(points_DFG, DFG[:,3])
+# plot_family_left(points_DFG,  DFG[:,3])
+
+# plot_family_right(points_HIJ, HIJ[:,3])
+# plot_family_left(points_HIJ,  HIJ[:,3])
+
+# # colorbar
+# sm = cm.ScalarMappable(cmap=cmap, norm=norm); sm.set_array([])
+# cbar = plt.colorbar(sm); cbar.set_label('Pressure [Pa]')
+
+plt.xlabel('x'); plt.ylabel('y')
+plt.title('Characteristics ')
+plt.legend(); plt.grid(True)
 plt.show()
+
