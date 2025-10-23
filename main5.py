@@ -5,12 +5,12 @@ import matplotlib.pyplot as plt
 from funcs import calculate_nu, calculate_Mach, calculate_Pressure, get_slope_point
 
 # user settings
-n_char = 3
+n_char = 20
 y_A = 1
 x_A = 0
 p_a = 101325
 gamma = 1.4
-Mach_error = 1e-6
+Mach_error = 1e-10
 
 # initial conditions
 M_e = 2.0
@@ -26,10 +26,11 @@ jet = np.array([phi_jet, v_jet, M_jet, p_jet])
 
 # region ACD
 p_acd = p_a
-M_acd = round((((2/(gamma - 1)) * ((p_0 / p_acd)**((gamma - 1) / gamma) - 1))**0.5), 4)
+M_acd = round((((2/(gamma - 1)) * ((p_0 / p_acd)**((gamma - 1) / gamma) - 1))**0.5), 10)
 v_acd = calculate_nu(M_acd, gamma)
 phi_acd = phi_jet - v_jet + v_acd
 ACD = np.array([phi_acd, v_acd, M_acd, p_acd])
+print('ACD:', ACD)
 
 # region ABC
 phi_1, phi_2 = phi_jet, phi_acd
@@ -92,7 +93,7 @@ for i in range(n_char):
 # region DFG
 DFG = np.empty((n_char, 4), dtype=object)
 p_boundary_dfg = p_a
-M_boundary_dfg = round((((2/(gamma - 1)) * ((p_0 / p_boundary_dfg)**((gamma - 1) / gamma) - 1))**0.5), 4)
+M_boundary_dfg = round((((2/(gamma - 1)) * ((p_0 / p_boundary_dfg)**((gamma - 1) / gamma) - 1))**0.5), 10)
 v_boundary_dfg = calculate_nu(M_boundary_dfg, gamma)
 for i in range(n_char):
     J_plus_i = CDEF[i,1] - CDEF[i,0]
@@ -133,7 +134,7 @@ for i in range(n_char):
 
 # region GIK
 p_gik = p_a
-M_gik = round((((2/(gamma - 1)) * ((p_0 / p_gik)**((gamma - 1) / gamma) - 1))**0.5), 4)
+M_gik = round((((2/(gamma - 1)) * ((p_0 / p_gik)**((gamma - 1) / gamma) - 1))**0.5), 10)
 v_gik = calculate_nu(M_gik, gamma)
 phi_gik = v_gik - v_efh + phi_efh
 GIK = np.array([phi_gik, v_gik, M_gik, p_gik])
@@ -190,11 +191,18 @@ for i in range(n_char):
 # print('HIJ:', HIJ)
 # print('IJKL:', IJKL)
 
+# draw centerline
+y_centerline = 0
+x0 = x_A
+x1 = x_A + 15
+plt.figure(figsize=(12, 5))
+plt.plot([x0, x1], [y_centerline, y_centerline], 'k--', label='Centerline')
+
 # draw characteristic AB
 slope_AB = get_slope_point(ABC[0,0], ABC[0,2], '-')
 x_B = x_A + (0 - y_A) / slope_AB
 
-plt.plot([x_A, x_B], [y_A, 0], 'b-', label='Line AB')  # 'b-' = blue solid line
+plt.plot([x_A, x_B], [y_A, 0], 'b-')  # 'b-' = blue solid line
 plt.scatter([x_A], [y_A], color='red')
 plt.scatter([x_B], [0], color='red')
 
@@ -204,11 +212,12 @@ y_BC = [0]
 for i in range(1, len(BCE)):
     slope_segment = (get_slope_point(BCE[0,0][i-1], BCE[0,2][i-1], '+') + get_slope_point(BCE[0,0][i], BCE[0,2][i], '+')) / 2
     slope_intersecting = get_slope_point(ABC[i,0], ABC[i,2], '-')
-    x_i = (1-0+slope_segment*x_BC[-1]) / (slope_segment - slope_intersecting)
+    x_i = (1 - y_BC[-1] + slope_segment * x_BC[-1]) / (slope_segment - slope_intersecting)
     y_i = slope_intersecting * x_i + 1
     x_BC.append(x_i)
     y_BC.append(y_i)
-plt.plot(x_BC, y_BC, 'g-', label='Line BC') 
+
+plt.plot(x_BC, y_BC, 'g-')
 plt.scatter(x_BC[-1], y_BC[-1], color='red')
 
 # draw rest of ABC
@@ -216,19 +225,16 @@ for i in range(1, len(ABC)):
     x_i = [0, x_BC[i]]
     y_i = [1, y_BC[i]]
     plt.plot(x_i, y_i, 'b-')
-print('ABC:', ABC)
-print('BCE:', BCE)
 
 # draw rest of BCE
 points_BCE = np.empty((n_char, 2), dtype=object)
 points_BCE[0][0] = np.array(x_BC)
 points_BCE[0][1] = np.array(y_BC) 
-print('points_BCE:', points_BCE)
-y_i = y_BC
 for i in range(1, n_char):
     x_i = np.array([])
     y_i = np.array([])
     y0 = 0
+
     slope_i = get_slope_point(BCE[i,0][0], BCE[i,2][0], '-')
     slope_incomming = get_slope_point(BCE[i-1,0][1], BCE[i-1,2][1], '-')
     slope_segment = (slope_i + slope_incomming) / 2
@@ -237,27 +243,191 @@ for i in range(1, n_char):
     x_0 = (y0 - y_incomming) / slope_segment + x_inncomming
     x_i = np.insert(x_i, 0, x_0)
     y_i = np.insert(y_i, 0, y0)
-    for j in range(1, n_char-i):
-        x_intersect = points_BCE[i-1,0][j+1]
-        y_intersect = points_BCE[i-1,1][j+1]
-        slope_incomming = get_slope_point(BCE[i-1,0][j], BCE[i-1,2][j], '-')
-        slope_i = get_slope_point(BCE[i,0][j], BCE[i,2][j], '-')
-        slope_segment = (slope_i + slope_incomming) / 2
-        x_j = (y_intersect - y_i[-1] + slope_segment * x_i[-1]) / slope_segment
-        y_j = slope_segment * (x_j - x_i[-1]) + y_i[-1]
-        x_i = np.insert(x_i, j, x_j)
-        y_i = np.insert(y_i, j, y_j)
+
+    for j in range(1, n_char - i):
+        m1 = get_slope_point(BCE[i,0][j], BCE[i,2][j], '+')
+        m2 = get_slope_point(BCE[i-1,0][j+1], BCE[i-1,2][j+1], '-')
+
+        x_base, y_base = x_i[-1], y_i[-1]
+        x_in, y_in = points_BCE[i-1,0][j+1], points_BCE[i-1,1][j+1]
+        x_ij = (m1*x_base - m2*x_in + y_in - y_base) / (m1 - m2)
+        y_ij = m1*(x_ij - x_base) + y_base
+
+        x_i = np.append(x_i, x_ij)
+        y_i = np.append(y_i, y_ij)
     points_BCE[i][0] = x_i
     points_BCE[i][1] = y_i
-print('points_BCE after:', points_BCE)
 
-# Plot all BCE characteristics
-for i in range(n_char):
-    x_coords = points_BCE[i][0]
-    y_coords = points_BCE[i][1]
-    plt.plot(x_coords, y_coords, 'g-')  # 'g-' = green solid line
-    plt.scatter(x_coords, y_coords, color='red', s=10)  # optional: plot points
+plt.scatter(points_BCE[-1][0], points_BCE[-1][1], color='red')
 
+# draw right running BCE
+for i in range(len(points_BCE)):
+    plt.plot(points_BCE[i][0], points_BCE[i][1], 'g-')
+
+# draw left running BCE
+for start_j in range(1, len(points_BCE[0][0])): 
+    x = []
+    y = []
+    for i in range(n_char):
+        j = start_j - i
+        if j < 0 or j >= len(points_BCE[i][0]):
+            break
+        x.append(points_BCE[i][0][j])
+        y.append(points_BCE[i][1][j])
+    plt.plot(x, y, 'g-')
+
+
+# draw AD 
+y_C = points_BCE[0][1][-1]
+x_C = points_BCE[0][0][-1]
+x_D = (y_C-y_A+np.tan(ACD[0])*x_A-get_slope_point(CDEF[0,0], CDEF[0,2], '+')*x_C) / (np.tan(ACD[0])-get_slope_point(CDEF[0,0], CDEF[0,2], '+'))
+y_D = get_slope_point(CDEF[0,0], CDEF[0,2], '+') * (x_D - x_C) + y_C
+plt.scatter([x_D], [y_D], color='red')
+plt.plot([x_A, x_D], [y_A, y_D], 'r--', label='jet boundary') 
+
+x_DF = [x_D]
+y_DF = [y_D]
+for i in range(1, len(DFG)):
+    slope_segment = (get_slope_point(DFG[0,0][i-1], DFG[0,2][i-1], '-') + get_slope_point(DFG[0,0][i], DFG[0,2][i], '-')) / 2
+    slope_intersecting = get_slope_point(CDEF[i,0], CDEF[i,2], '+')
+    
+    x_C_i = points_BCE[i][0][-1]
+    y_C_i = points_BCE[i][1][-1]
+    x_i = (y_C_i - y_DF[-1] + slope_segment * x_DF[-1] - slope_intersecting * x_C_i) / (slope_segment - slope_intersecting)
+    y_i = slope_segment * (x_i - x_DF[-1]) + y_DF[-1]
+    
+    x_DF.append(x_i)
+    y_DF.append(y_i)
+
+plt.plot(x_DF, y_DF, 'g-')
+plt.scatter(x_DF[-1], y_DF[-1], color='red')
+
+# draw CDEF
+for i in range(len(CDEF)):
+    x_C = points_BCE[i][0][-1]
+    y_C = points_BCE[i][1][-1]
+    slope_CDEF = get_slope_point(CDEF[i,0], CDEF[i,2], '+')
+    
+    x_F = x_DF[i]
+    y_F = y_DF[i]
+    plt.plot([x_C, x_F], [y_C, y_F], 'b-')
+
+# draw DFG
+points_DFG = np.empty((n_char, 2), dtype=object)
+points_DFG[0][0] = np.array(x_DF)
+points_DFG[0][1] = np.array(y_DF) 
+for i in range(1, n_char):
+    x_i = np.array([])
+    y_i = np.array([])
+    m = (get_slope_point(DFG[i,0][0], DFG[i,2][0], '+') + get_slope_point(DFG[i-1,0][1], DFG[i-1,2][1], '+')) / 2
+    phi = (DFG[i,0][0] + DFG[i-1,0][0]) / 2
+    x_prev = points_DFG[i-1][0][0]
+    y_prev = points_DFG[i-1][1][0]
+    x_incomming = points_DFG[i-1][0][1]
+    y_incomming = points_DFG[i-1][1][1]
+
+    x_0 = (-m*x_incomming + y_incomming - y_prev + np.tan(phi)*x_prev) / (np.tan(phi) - m)
+    y_0 = np.tan(phi) * (x_0 - x_prev) + y_prev
+    x_i = np.insert(x_i, 0, x_0)
+    y_i = np.insert(y_i, 0, y_0)
+
+    for j in range(1, n_char - i):
+        m1 = get_slope_point(DFG[i,0][j], DFG[i,2][j], '-')
+        m2 = get_slope_point(DFG[i-1,0][j+1], DFG[i-1,2][j+1], '+')
+
+        x_base, y_base = x_i[-1], y_i[-1]
+        x_in, y_in = points_DFG[i-1,0][j+1], points_DFG[i-1,1][j+1]
+        x_ij = (m1*x_base - m2*x_in + y_in - y_base) / (m1 - m2)
+        y_ij = m1*(x_ij - x_base) + y_base
+
+        x_i = np.append(x_i, x_ij)
+        y_i = np.append(y_i, y_ij)
+    points_DFG[i][0] = x_i
+    points_DFG[i][1] = y_i
+
+plt.scatter(points_DFG[-1][0], points_DFG[-1][1], color='red')
+
+# draw right running DFG
+for i in range(len(points_DFG)):
+    plt.plot(points_DFG[i][0], points_DFG[i][1], 'g-')
+
+# draw left running DFG
+for start_j in range(1, len(points_DFG[0][0])): 
+    x = []
+    y = []
+    for i in range(n_char):
+        j = start_j - i
+        if j < 0 or j >= len(points_DFG[i][0]):
+            break
+        x.append(points_DFG[i][0][j])
+        y.append(points_DFG[i][1][j])
+    plt.plot(x, y, 'g-')
+
+# draw jet boundary
+for i in range(1, len(points_DFG)):
+    x1 , y1 = points_DFG[i-1][0][0], points_DFG[i-1][1][0]
+    x2 , y2 = points_DFG[i][0][0], points_DFG[i][1][0]
+    plt.plot([x1, x2], [y1, y2], 'r--')
+# draw FH
+
+# draw rest of HIJ
+points_HIJ = np.empty((n_char, 2), dtype=object)
+points_HIJ[0][0] = np.array(x_HI)
+points_HIJ[0][1] = np.array(y_HI) 
+for i in range(1, n_char):
+    x_i = np.array([])
+    y_i = np.array([])
+    y0 = 0
+
+    slope_i = get_slope_point(HIJ[i,0][0], HIJ[i,2][0], '-')
+    slope_incomming = get_slope_point(HIJ[i-1,0][1], HIJ[i-1,2][1], '-')
+    slope_segment = (slope_i + slope_incomming) / 2
+    x_inncomming = points_HIJ[i-1][0][1]
+    y_incomming = points_HIJ[i-1][1][1]
+    x_0 = (y0 - y_incomming) / slope_segment + x_inncomming
+    x_i = np.insert(x_i, 0, x_0)
+    y_i = np.insert(y_i, 0, y0)
+
+    for j in range(1, n_char - i):
+        m1 = get_slope_point(HIJ[i,0][j], HIJ[i,2][j], '+')
+        m2 = get_slope_point(HIJ[i-1,0][j+1], HIJ[i-1,2][j+1], '-')
+
+        x_base, y_base = x_i[-1], y_i[-1]
+        x_in, y_in = points_HIJ[i-1,0][j+1], points_HIJ[i-1,1][j+1]
+        x_ij = (m1*x_base - m2*x_in + y_in - y_base) / (m1 - m2)
+        y_ij = m1*(x_ij - x_base) + y_base
+
+        x_i = np.append(x_i, x_ij)
+        y_i = np.append(y_i, y_ij)
+    points_HIJ[i][0] = x_i
+    points_HIJ[i][1] = y_i
+
+plt.scatter(points_HIJ[-1][0], points_HIJ[-1][1], color='red')
+
+# draw right running HIJ
+for i in range(len(points_HIJ)):
+    plt.plot(points_HIJ[i][0], points_HIJ[i][1], 'g-')
+
+# draw left running HIJ
+for start_j in range(1, len(points_HIJ[0][0])): 
+    x = []
+    y = []
+    for i in range(n_char):
+        j = start_j - i
+        if j < 0 or j >= len(points_HIJ[i][0]):
+            break
+        x.append(points_HIJ[i][0][j])
+        y.append(points_HIJ[i][1][j])
+    plt.plot(x, y, 'g-')
+
+# NOW draw FGHI (after HIJ mesh is calculated)
+for i in range(len(FGHI)):
+    x_F = points_DFG[i][0][-1]
+    y_F = points_DFG[i][1][-1]
+    
+    x_I = points_HIJ[i][0][-1]
+    y_I = points_HIJ[i][1][-1]
+    plt.plot([x_F, x_I], [y_F, y_I], 'b-')
 
 
 # Add labels and grid
